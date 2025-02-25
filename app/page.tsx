@@ -1,16 +1,65 @@
-//@ts-nocheck
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import "./home.css";
 
-export default function Home() {
-  const [location, setLocation] = useState("");
-  const [weather, setWeather] = useState(null);
-  const [background, setBackground] = useState("/background.jpg");
+type WeatherData = {
+  city: string;
+  temp: string | number;
+  condition: string;
+  visibility: string | number;
+  humidity: string | number;
+  wind: string | number;
+  gust: string | number;
+};
 
-  const defaultWeather = {
+const conditionCategories: Record<string, string[]> = {
+  "Sunny & Clear": ["Sunny", "Clear"],
+  "Cloudy & Overcast": ["Partly cloudy", "Cloudy", "Overcast"],
+  "Fog & Mist": ["Mist", "Fog", "Freezing fog"],
+  "Rain & Drizzle": [
+    "Patchy rain possible", "Patchy light drizzle", "Light drizzle", "Freezing drizzle", "Heavy freezing drizzle", 
+    "Patchy light rain", "Light rain", "Moderate rain at times", "Moderate rain", "Heavy rain at times", "Heavy rain", 
+    "Light freezing rain", "Moderate or heavy freezing rain"
+  ],
+  "Snow & Blizzard": ["Patchy snow possible", "Blowing snow", "Blizzard", "Patchy light snow", "Light snow", "Patchy moderate snow", "Moderate snow", "Patchy heavy snow", "Heavy snow"],
+  "Sleet & Ice Pellets": ["Patchy sleet possible", "Light sleet", "Moderate or heavy sleet", "Ice pellets", "Light showers of ice pellets", "Moderate or heavy showers of ice pellets"],
+  "Thunderstorms": ["Thundery outbreaks possible", "Patchy light rain with thunder", "Moderate or heavy rain with thunder", "Patchy light snow with thunder", "Moderate or heavy snow with thunder"],
+  "Showers": ["Light rain shower", "Moderate or heavy rain shower", "Torrential rain shower", "Light sleet showers", "Moderate or heavy sleet showers", "Light snow showers", "Moderate or heavy snow showers"],
+};
+
+const backgroundImages: Record<string, string> = {
+  "Sunny & Clear": "/sunny.jpg",
+  "Cloudy & Overcast": "/cloudy.jpg",
+  "Fog & Mist": "/fog.jpg",
+  "Rain & Drizzle": "/rain.jpg",
+  "Snow & Blizzard": "/snow.jpg",
+  "Sleet & Ice Pellets": "/sleet.jpg",
+  "Thunderstorms": "/thunderstorms.jpg",
+  "Showers": "/showers.jpg",
+};
+
+const categorizeCondition = (condition: string) => {
+  for (const [category, conditions] of Object.entries(conditionCategories)) {
+    if (conditions.includes(condition)) {
+      return category;
+    }
+  }
+  return "Unknown";
+};
+
+const getBackgroundImage = (condition: string) => {
+  return backgroundImages[condition] || "/background.jpg";
+};
+
+export default function Home() {
+  const [location, setLocation] = useState<string>("");
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [background, setBackground] = useState<string>("/background.jpg");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  const defaultWeather: WeatherData = {
     city: "City",
     temp: "--",
     condition: "--",
@@ -20,77 +69,60 @@ export default function Home() {
     gust: "--",
   };
 
-  const conditionCategories = {
-    "Sunny & Clear": ["Sunny", "Clear"],
-    "Cloudy & Overcast": ["Partly cloudy", "Cloudy", "Overcast"],
-    "Fog & Mist": ["Mist", "Fog", "Freezing fog"],
-    "Rain & Drizzle": [
-      "Patchy rain possible", "Patchy light drizzle", "Light drizzle", "Freezing drizzle", "Heavy freezing drizzle", "Patchy light rain", "Light rain", "Moderate rain at times", "Moderate rain", "Heavy rain at times", "Heavy rain", "Light freezing rain", "Moderate or heavy freezing rain"
-    ],
-    "Snow & Blizzard": ["Patchy snow possible", "Blowing snow", "Blizzard", "Patchy light snow", "Light snow", "Patchy moderate snow", "Moderate snow", "Patchy heavy snow", "Heavy snow"],
-    "Sleet & Ice Pellets": ["Patchy sleet possible", "Light sleet", "Moderate or heavy sleet", "Ice pellets", "Light showers of ice pellets", "Moderate or heavy showers of ice pellets"],
-    "Thunderstorms": ["Thundery outbreaks possible", "Patchy light rain with thunder", "Moderate or heavy rain with thunder", "Patchy light snow with thunder", "Moderate or heavy snow with thunder"],
-    "Showers": ["Light rain shower", "Moderate or heavy rain shower", "Torrential rain shower", "Light sleet showers", "Moderate or heavy sleet showers", "Light snow showers", "Moderate or heavy snow showers"],
-  };
-
-  const backgroundImages = {
-    "Sunny & Clear": "/sunny.jpg",
-    "Cloudy & Overcast": "/cloudy.jpg",
-    "Fog & Mist": "/fog.jpg",
-    "Rain & Drizzle": "/rain.jpg",
-    "Snow & Blizzard": "/snow.jpg",
-    "Sleet & Ice Pellets": "/sleet.jpg",
-    "Thunderstorms": "/thunderstorms.jpg",
-    "Showers": "/showers.jpg",
-  };
-
-  const categorizeCondition = (condition) => {
-    for (const [category, conditions] of Object.entries(conditionCategories)) {
-      if (conditions.includes(condition)) {
-        return category;
-      }
+  const fetchSuggestions = async (query: string) => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
     }
-    return "Unknown";
+    try {
+      const api_key = "991f9bb493b24c85919110257252102";
+      const api_url = `http://api.weatherapi.com/v1/search.json?key=${api_key}&q=${query}`;
+      const { data } = await axios.get(api_url);
+      setSuggestions(data.map((item: any) => item.name));
+    } catch (err) {
+      console.log(err);
+    }
   };
 
-  const getBackgroundImage = (condition) => {
-    return backgroundImages[condition] || "/background.jpg";
-  };
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      fetchSuggestions(location);
+    }, 300);
+    return () => clearTimeout(debounce);
+  }, [location]);
 
-  const getWeather = async () => {
-    const api_key = "991f9bb493b24c85919110257252102";
-    const api_url = `http://api.weatherapi.com/v1/current.json?key=${api_key}&q=${location}`;
-
-    if (location) {
+  const getWeather = useCallback(async (city?: string) => {
+    const query = city || location;
+    if (query) {
       try {
+        const api_key = "991f9bb493b24c85919110257252102";
+        const api_url = `http://api.weatherapi.com/v1/current.json?key=${api_key}&q=${query}`;
         const { data } = await axios.get(api_url);
-        if (data) {
-          const newCondition = categorizeCondition(data.current.condition.text);
-          setWeather({
-            city: data.location.name,
-            temp: data.current.temp_c,
-            condition: newCondition,
-            visibility: data.current.vis_miles,
-            humidity: data.current.humidity,
-            wind: data.current.wind_kph,
-            gust: data.current.gust_mph,
-          });
-          setBackground(getBackgroundImage(newCondition));
-          setLocation("");
-        }
+        const newCondition = categorizeCondition(data.current.condition.text);
+        setWeather({
+          city: data.location.name,
+          temp: data.current.temp_c,
+          condition: newCondition,
+          visibility: data.current.vis_miles,
+          humidity: data.current.humidity,
+          wind: data.current.wind_kph,
+          gust: data.current.gust_mph,
+        });
+        setBackground(getBackgroundImage(newCondition));
+        setSuggestions([]);
       } catch (err) {
         console.log(err);
       }
     }
-  };
-
-  const handleKeyUp = (key) => {
-    if (key === "Enter") {
-      getWeather();
-    }
-  };
+  }, [location]);
 
   const displayWeather = weather || defaultWeather;
+
+  const handleBlur = () => {
+    if (location.trim() === "") {
+      setTimeout(() => setSuggestions([]), 1);
+    }
+  };
 
   return (
     <AnimatePresence mode="wait">
@@ -108,10 +140,23 @@ export default function Home() {
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              onKeyUp={(e) => handleKeyUp(e.key)}
+              onBlur={handleBlur}
               className="text-xl font-bold outline-none text-gray-700 text-center w-[80%] h-[4rem] bg-white/30 rounded-full"
               placeholder={displayWeather.city}
             />
+            {location.trim() && suggestions.length > 0 && (
+              <ul className="absolute bg-white shadow-md rounded-md mt-2 w-[80%] mx-auto text-left">
+                {suggestions.map((suggestion, index) => (
+                  <li
+                    key={index}
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-200"
+                    onClick={() => { setLocation(suggestion); getWeather(suggestion); }}
+                  >
+                    {suggestion}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <div className="mt-[2rem]">
             <p className="text-[2rem]">{displayWeather.temp}°C</p>
