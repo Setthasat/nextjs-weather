@@ -53,10 +53,6 @@ const getBackgroundImage = (condition: string) => {
   return backgroundImages[condition] || "/background.jpg";
 };
 
-interface SuggestionData {
-  name: string;
-}
-
 export default function Home() {
   const [location, setLocation] = useState<string>("");
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -81,8 +77,8 @@ export default function Home() {
     try {
       const api_key = "991f9bb493b24c85919110257252102";
       const api_url = `http://api.weatherapi.com/v1/search.json?key=${api_key}&q=${query}`;
-      const { data } = await axios.get<SuggestionData[]>(api_url);  // Specify the type here
-      setSuggestions(data.map((item) => item.name));
+      const { data } = await axios.get(api_url);
+      setSuggestions(data.map((item: any) => item.name));
     } catch (err) {
       console.log(err);
     }
@@ -126,7 +122,7 @@ export default function Home() {
     <AnimatePresence mode="wait">
       <motion.div
         key={background}
-        className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
+        className="relative h-screen flex items-center justify-center bg-cover bg-center overflow-hidden"
         style={{ backgroundImage: `url(${background})` }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -138,7 +134,7 @@ export default function Home() {
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              onBlur={() => setTimeout(() => setSuggestions([]), 1000)}  // Hide suggestions after 1 second
+              onBlur={() => setTimeout(() => setSuggestions([]), 1000)}
               className="text-xl font-bold outline-none text-gray-700 text-center w-[80%] h-[4rem] bg-white/30 rounded-full"
               placeholder={displayWeather.city}
             />
