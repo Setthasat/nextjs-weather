@@ -99,7 +99,7 @@ export default function Home() {
     }
     try {
       const api_key = "991f9bb493b24c85919110257252102";
-      const api_url = `http://api.weatherapi.com/v1/search.json?key=${api_key}&q=${query}`;
+      const api_url = `https://api.weatherapi.com/v1/search.json?key=${api_key}&q=${query}`;
       const { data } = await axios.get<SearchResult[]>(api_url);
       setSuggestions(data.map((item) => item.name));
     } catch (err) {
