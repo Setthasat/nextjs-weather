@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import "./home.css";
 
 type WeatherData = {
   city: string;
@@ -12,6 +11,30 @@ type WeatherData = {
   humidity: string | number;
   wind: string | number;
   gust: string | number;
+};
+
+type SearchResult = {
+  name: string;
+  region: string;
+  country: string;
+};
+
+type WeatherApiResponse = {
+  location: {
+    name: string;
+    region: string;
+    country: string;
+  };
+  current: {
+    temp_c: number;
+    condition: {
+      text: string;
+    };
+    vis_miles: number;
+    humidity: number;
+    wind_kph: number;
+    gust_mph: number;
+  };
 };
 
 const conditionCategories: Record<string, string[]> = {
@@ -40,7 +63,7 @@ const backgroundImages: Record<string, string> = {
   "Showers": "/showers.jpg",
 };
 
-const categorizeCondition = (condition: string) => {
+const categorizeCondition = (condition: string): string => {
   for (const [category, conditions] of Object.entries(conditionCategories)) {
     if (conditions.includes(condition)) {
       return category;
@@ -49,7 +72,7 @@ const categorizeCondition = (condition: string) => {
   return "Unknown";
 };
 
-const getBackgroundImage = (condition: string) => {
+const getBackgroundImage = (condition: string): string => {
   return backgroundImages[condition] || "/background.jpg";
 };
 
@@ -77,10 +100,10 @@ export default function Home() {
     try {
       const api_key = "991f9bb493b24c85919110257252102";
       const api_url = `http://api.weatherapi.com/v1/search.json?key=${api_key}&q=${query}`;
-      const { data } = await axios.get(api_url);
-      setSuggestions(data.map((item: any) => item.name));
+      const { data } = await axios.get<SearchResult[]>(api_url);
+      setSuggestions(data.map((item) => item.name));
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
@@ -97,7 +120,7 @@ export default function Home() {
       try {
         const api_key = "991f9bb493b24c85919110257252102";
         const api_url = `http://api.weatherapi.com/v1/current.json?key=${api_key}&q=${query}`;
-        const { data } = await axios.get(api_url);
+        const { data } = await axios.get<WeatherApiResponse>(api_url);
         const newCondition = categorizeCondition(data.current.condition.text);
         setWeather({
           city: data.location.name,
@@ -111,7 +134,7 @@ export default function Home() {
         setBackground(getBackgroundImage(newCondition));
         setSuggestions([]);
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     }
   }, [location]);
@@ -139,12 +162,15 @@ export default function Home() {
               placeholder={displayWeather.city}
             />
             {suggestions.length > 0 && (
-              <ul className="absolute bg-white shadow-md rounded-md mt-2 w-[80%] mx-auto text-left">
+              <ul className="absolute bg-white shadow-md rounded-md mt-2 w-[80%] mx-auto text-left z-10">
                 {suggestions.map((suggestion, index) => (
                   <li
                     key={index}
                     className="px-4 py-2 cursor-pointer hover:bg-gray-200"
-                    onClick={() => { setLocation(suggestion); getWeather(suggestion); }}
+                    onClick={() => { 
+                      setLocation(suggestion); 
+                      getWeather(suggestion); 
+                    }}
                   >
                     {suggestion}
                   </li>
